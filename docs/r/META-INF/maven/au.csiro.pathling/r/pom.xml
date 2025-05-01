@@ -24,7 +24,7 @@
   <parent>
     <groupId>au.csiro.pathling</groupId>
     <artifactId>pathling</artifactId>
-    <version>7.0.1</version>
+    <version>7.2.0</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <artifactId>r</artifactId>
@@ -59,11 +59,11 @@
     <pathling.Rapi.version.qualifier/>
     <pathling.Rapi.version>${pathling.Rapi.version.base}${pathling.Rapi.version.qualifier}</pathling.Rapi.version>
     <!-- 
-      This needs to maintained as the most recent version of Spark that is in the versions manifest
-      of the sparklyr version that we depend upon that is on the archive site. The reason we can't 
-      use the latest from the CDN is that the files drop off the CDN when a new version is released.
+      This needs to maintained as a version of Spark that is in the versions manifest of the 
+      sparklyr version that we depend upon that is on the archive site. The reason we can't use the 
+      latest from the CDN is that the files drop off the CDN when a new version is released.
     -->
-    <pathling.Rapi.sparkVersion>3.5.1</pathling.Rapi.sparkVersion>
+    <pathling.Rapi.sparkVersion>3.5.3</pathling.Rapi.sparkVersion>
     <pathling.Rapi.scalaVersion>${pathling.scalaVersion}</pathling.Rapi.scalaVersion>
     <pathling.Rapi.hadoopMajorVersion>${pathling.hadoopMajorVersion}</pathling.Rapi.hadoopMajorVersion>
     <pathling.Rapi.hadoopVersion>${pathling.hadoopVersion}</pathling.Rapi.hadoopVersion>
@@ -217,6 +217,8 @@
               <arguments>
                 <argument>--verbose</argument>
                 <argument>-e</argument>
+                <argument>Sys.setenv(CXX11="clang++", CXX11STD="-std=c++11", CXXFLAGS="-std=c++11")</argument>
+                <argument>-e</argument>
                 <argument>install.packages("devtools")</argument>
                 <argument>-e</argument>
                 <argument>devtools::install_dev_deps()</argument>
@@ -251,6 +253,8 @@
               <executable>Rscript</executable>
               <workingDirectory>${project.basedir}</workingDirectory>
               <arguments>
+                <argument>-e</argument>
+                <argument>library(sparklyr)</argument>
                 <argument>-e</argument>
                 <argument>devtools::test(stop_on_failure = TRUE)</argument>
               </arguments>
@@ -361,10 +365,19 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-jar-plugin</artifactId>
-            <configuration>
-              <classesDirectory>${project.build.directory}/docs</classesDirectory>
-              <classifier>docs</classifier>
-            </configuration>
+            <executions>
+              <execution>
+                <id>doc-jar</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+                <configuration>
+                  <classesDirectory>${project.build.directory}/docs</classesDirectory>
+                  <classifier>docs</classifier>
+                </configuration>
+              </execution>
+            </executions>
           </plugin>
         </plugins>
       </build>
