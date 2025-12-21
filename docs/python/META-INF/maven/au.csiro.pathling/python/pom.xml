@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright 2023 Commonwealth Scientific and Industrial Research
+  ~ Copyright © 2018-2025 Commonwealth Scientific and Industrial Research
   ~ Organisation (CSIRO) ABN 41 687 119 230.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,11 +24,11 @@
   <parent>
     <groupId>au.csiro.pathling</groupId>
     <artifactId>pathling</artifactId>
-    <version>7.2.0</version>
+    <version>9.1.1-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <artifactId>python</artifactId>
-  <packaging>jar</packaging>
+  <packaging>pom</packaging>
 
   <name>Pathling Python API</name>
   <description>A library for using Pathling with Python.</description>
@@ -80,17 +80,32 @@
         <executions>
           <!-- Install dependencies -->
           <execution>
-            <id>install-dependencies</id>
+            <id>ensure-venv</id>
             <phase>initialize</phase>
             <goals>
               <goal>exec</goal>
             </goals>
             <configuration>
-              <executable>pip</executable>
+              <executable>uv</executable>
               <arguments>
-                <argument>install</argument>
-                <argument>-r</argument>
-                <argument>requirements/dev.txt</argument>
+                <argument>venv</argument>
+                <argument>-p 3.9</argument>
+                <argument>.venv</argument>
+              </arguments>
+            </configuration>
+          </execution>
+
+          <!-- Install dependencies -->
+          <execution>
+            <id>install-dependencies</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>uv</executable>
+              <arguments>
+                <argument>sync</argument>
               </arguments>
             </configuration>
           </execution>
@@ -103,8 +118,10 @@
               <goal>exec</goal>
             </goals>
             <configuration>
-              <executable>python</executable>
+              <executable>uv</executable>
               <arguments>
+                <argument>run</argument>
+                <argument>python</argument>
                 <argument>-m</argument>
                 <argument>build</argument>
                 <argument>--outdir</argument>
@@ -121,8 +138,9 @@
               <goal>exec</goal>
             </goals>
             <configuration>
-              <executable>pip</executable>
+              <executable>uv</executable>
               <arguments>
+                <argument>pip</argument>
                 <argument>install</argument>
                 <argument>.</argument>
               </arguments>
@@ -195,9 +213,11 @@
                   <goal>exec</goal>
                 </goals>
                 <configuration>
-                  <executable>pytest</executable>
+                  <executable>uv</executable>
                   <workingDirectory>${project.basedir}</workingDirectory>
                   <arguments>
+                    <argument>run</argument>
+                    <argument>pytest</argument>
                     <argument>-x</argument>
                     <argument>tests</argument>
                     <argument>--cov=pathling</argument>
@@ -208,6 +228,7 @@
                   </arguments>
                   <environmentVariables>
                     <PYTHONPATH>${project.basedir}</PYTHONPATH>
+                    <PYSPARK_PYTHON>${project.basedir}/.venv/bin/python</PYSPARK_PYTHON>
                   </environmentVariables>
                 </configuration>
               </execution>
@@ -220,16 +241,23 @@
                   <goal>exec</goal>
                 </goals>
                 <configuration>
-                  <executable>spark-submit</executable>
+                  <executable>uv</executable>
                   <arguments>
+                    <argument>run</argument>
+                    <argument>spark-submit</argument>
                     <argument>--packages</argument>
                     <argument>au.csiro.pathling:library-runtime:${project.version},io.delta:delta-spark_${pathling.scalaVersion}:${pathling.deltaVersion}</argument>
                     <argument>--conf</argument>
                     <argument>spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension</argument>
                     <argument>--conf</argument>
                     <argument>spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog</argument>
-                    <argument>${project.basedir}/examples/query.py</argument>
+                    <argument>--conf</argument>
+                    <argument>spark.sql.mapKeyDedupPolicy=LAST_WIN</argument>
+                    <argument>${project.basedir}/examples/fhir_view.py</argument>
                   </arguments>
+                  <environmentVariables>
+                    <PYSPARK_PYTHON>${project.basedir}/.venv/bin/python</PYSPARK_PYTHON>
+                  </environmentVariables>
                 </configuration>
               </execution>
             </executions>
@@ -253,8 +281,10 @@
                   <goal>exec</goal>
                 </goals>
                 <configuration>
-                  <executable>sphinx-apidoc</executable>
+                  <executable>uv</executable>
                   <arguments>
+                    <argument>run</argument>
+                    <argument>sphinx-apidoc</argument>
                     <argument>--force</argument>
                     <argument>--full</argument>
                     <argument>-o</argument>
@@ -279,6 +309,9 @@
                     <argument>clean</argument>
                     <argument>html</argument>
                   </arguments>
+                  <environmentVariables>
+                    <SPHINXBUILD>uv run sphinx-build</SPHINXBUILD>
+                  </environmentVariables>
                 </configuration>
               </execution>
             </executions>
@@ -288,10 +321,19 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-jar-plugin</artifactId>
-            <configuration>
-              <classesDirectory>${project.build.directory}/docs/_build/html</classesDirectory>
-              <classifier>docs</classifier>
-            </configuration>
+            <executions>
+              <execution>
+                <id>docs-jar</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+                <configuration>
+                  <classesDirectory>${project.build.directory}/docs/_build/html</classesDirectory>
+                  <classifier>docs</classifier>
+                </configuration>
+              </execution>
+            </executions>
           </plugin>
         </plugins>
       </build>
@@ -315,12 +357,13 @@
                   <goal>exec</goal>
                 </goals>
                 <configuration>
-                  <executable>python</executable>
+                  <executable>uv</executable>
                   <arguments>
-                    <argument>-m</argument>
+                    <argument>run</argument>
                     <argument>twine</argument>
                     <argument>upload</argument>
                     <argument>--verbose</argument>
+                    <argument>--skip-existing</argument>
                     <argument>--repository</argument>
                     <argument>${pathling.pypi.repository}</argument>
                     <argument>${project.build.directory}/py-dist/*</argument>
@@ -348,9 +391,9 @@
                   <goal>exec</goal>
                 </goals>
                 <configuration>
-                  <executable>python</executable>
+                  <executable>uv</executable>
                   <arguments>
-                    <argument>-m</argument>
+                    <argument>run</argument>
                     <argument>twine</argument>
                     <argument>upload</argument>
                     <argument>--verbose</argument>
